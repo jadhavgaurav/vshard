@@ -1,4 +1,5 @@
 local llog = require('log')
+local lerror = require('vshard.error')
 local lutil = require('vshard.util')
 local lvexports = require('vshard.storage.exports')
 
@@ -230,8 +231,9 @@ local function schema_upgrade(target_version, username, password)
                 -- Rollback in case the handler started a transaction before the
                 -- exception.
                 box.rollback()
-                llog.info("Couldn't upgrade schema to %s: '%s'. Revert to %s",
-                          next_version, err1, prev_version)
+                llog.info("Couldn't upgrade schema to %s: %s. Revert to %s",
+                          next_version, tostring(lerror.make(err1)),
+                          prev_version)
                 ok, err2 = pcall(function()
                     local exports = schema_find_exports_for_vshard_version(
                         prev_version)
@@ -244,7 +246,7 @@ local function schema_upgrade(target_version, username, password)
                 end)
                 if not ok then
                     llog.info("Couldn't downgrade schema to %s - fatal error: "..
-                              "'%s'", prev_version, err2)
+                              "%s", prev_version, tostring(lerror.make(err2)))
                     os.exit(-1)
                 end
                 error(err1)
@@ -253,8 +255,8 @@ local function schema_upgrade(target_version, username, password)
                              {'vshard_version', unpack(next_version)})
             if not ok then
                 llog.info("Upgraded schema to %s but couldn't update _schema "..
-                          "'vshard_version' - fatal error: '%s'", next_version,
-                          err1)
+                          "'vshard_version' - fatal error: %s", next_version,
+                          tostring(lerror.make(err1)))
                 os.exit(-1)
             end
             llog.info("Successful vshard schema upgrade to %s", next_version)
